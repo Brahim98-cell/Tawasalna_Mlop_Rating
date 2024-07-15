@@ -3,7 +3,6 @@ import pandas as pd
 from surprise import Dataset, Reader, SVD, accuracy
 from surprise.model_selection import train_test_split
 import chardet
-from google.colab import files
 
 # Detect file encoding
 def detect_encoding(file_path):
