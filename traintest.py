@@ -15,7 +15,6 @@ def load_data(file_path):
     """Load product rating data from CSV with handling for encoding and errors."""
     encoding = detect_encoding(file_path)
     try:
-        # Using 'on_bad_lines' to skip problematic lines
         return pd.read_csv(file_path, encoding=encoding, on_bad_lines='skip')
     except Exception as e:
         print(f"Error loading file: {e}")
@@ -36,8 +35,7 @@ def build_and_train_model(data):
     model.fit(trainset)
     predictions = model.test(testset)
     rmse = accuracy.rmse(predictions)
-    print(f'RMSE: {rmse}')
-    return model
+    return model, rmse
 
 # Recommend products for a specific user
 def recommend_products(model, user_id, all_product_ids, top_n=10):
@@ -61,6 +59,30 @@ def load_model(file_path):
     with open(file_path, 'rb') as f:
         return pickle.load(f)
 
+# Convert recommendations to HTML
+def recommendations_to_html(recommendations, file_path):
+    """Convert the recommendations to an HTML file."""
+    df = pd.DataFrame(recommendations, columns=['Product ID', 'Predicted Rating'])
+    html_content = df.to_html(index=False)
+    with open(file_path, 'w') as f:
+        f.write(html_content)
+
+# Generate HTML report
+def generate_html_report(rmse, recommendations, file_path):
+    """Generate an HTML report for the model evaluation."""
+    with open(file_path, 'w') as f:
+        f.write('<html><body>')
+        f.write('<h1>Recommendation Model Evaluation Report</h1>')
+        f.write('<p>RMSE of the SVD model is: {:.2f}</p>'.format(rmse))
+        f.write('<h2>Top Recommendations</h2>')
+        
+        # Convert recommendations to HTML and include in the report
+        recommendations_df = pd.DataFrame(recommendations, columns=['Product ID', 'Predicted Rating'])
+        recommendations_html = recommendations_df.to_html(index=False)
+        f.write(recommendations_html)
+        
+        f.write('</body></html>')
+
 # Main script
 if __name__ == "__main__":
     # Specify the path to your CSV file
@@ -73,7 +95,7 @@ if __name__ == "__main__":
     data = prepare_data(df)
     
     # Build and train the model
-    model = build_and_train_model(data)
+    model, rmse = build_and_train_model(data)
     
     # Save the trained model
     save_model(model, 'product_recommendation_model.pkl')
@@ -83,9 +105,11 @@ if __name__ == "__main__":
     all_product_ids = df['product_id'].unique()
     recommendations = recommend_products(model, user_id, all_product_ids)
     
-    print('Top Recommendations:')
-    for product_id, score in recommendations:
-        print(f'Product ID: {product_id}, Predicted Rating: {score}')
+    # Convert and save recommendations to HTML
+    recommendations_to_html(recommendations, 'recommendations.html')
+    
+    # Generate HTML report
+    generate_html_report(rmse, recommendations, 'model_evaluation_report.html')
     
     # Load the model (example usage)
     loaded_model = load_model('product_recommendation_model.pkl')
@@ -93,6 +117,8 @@ if __name__ == "__main__":
     # Recommend products using the loaded model
     recommendations_loaded_model = recommend_products(loaded_model, user_id, all_product_ids)
     
-    print('Top Recommendations (Loaded Model):')
-    for product_id, score in recommendations_loaded_model:
-        print(f'Product ID: {product_id}, Predicted Rating: {score}')
+    # Convert and save recommendations from the loaded model to HTML
+    recommendations_to_html(recommendations_loaded_model, 'recommendations_loaded.html')
+    
+    # Generate HTML report for loaded model
+    generate_html_report(rmse, recommendations_loaded_model, 'model_evaluation_report_loaded.html')
