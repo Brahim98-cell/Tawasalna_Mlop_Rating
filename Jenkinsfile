@@ -74,7 +74,7 @@ pipeline{
   /*   stage('Archive Results') {
             steps {
                 // Archive results for later viewing
-                archiveArtifacts artifacts: '*.png,output.html', allowEmptyArchive: false
+                archiveArtifacts artifacts: 'output.html', allowEmptyArchive: false
             }
         }
 
