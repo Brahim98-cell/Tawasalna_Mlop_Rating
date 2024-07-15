@@ -1,7 +1,7 @@
-import pickle
-import pandas as pd
+  import pandas as pd
 from surprise import Dataset, Reader, SVD, accuracy
 from surprise.model_selection import train_test_split
+import pickle
 import chardet
 
 # Detect file encoding
@@ -63,9 +63,8 @@ def load_model(file_path):
 
 # Main script
 if __name__ == "__main__":
-    # Upload the CSV file
-    uploaded = files.upload()
-    file_path = next(iter(uploaded))
+    # Specify the path to your CSV file
+    file_path = 'product_ratings.csv'  # Update this path if needed
     
     # Load data
     df = load_data(file_path)
