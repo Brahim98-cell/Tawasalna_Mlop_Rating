@@ -71,12 +71,14 @@ pipeline{
             }
         }
         
-     stage('Archive Results') {
+  /*   stage('Archive Results') {
             steps {
                 // Archive results for later viewing
                 archiveArtifacts artifacts: '*.png,output.html', allowEmptyArchive: false
             }
         }
+
+ */
         
         stage('Publish HTML Report') {
             steps {
