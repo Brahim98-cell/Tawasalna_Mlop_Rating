@@ -47,7 +47,7 @@ def match_residents(model, scaler, occupation_encoder, community_encoder, new_re
     
     # Find nearest neighbors
     distances, indices = model.kneighbors(scaled_new_resident)
-    return indices
+    return distances, indices
 
 # Save model
 def save_model(model, scaler, occupation_encoder, community_encoder):
@@ -74,6 +74,18 @@ def load_model():
         community_encoder = pickle.load(f)
     return model, scaler, occupation_encoder, community_encoder
 
+# Generate HTML report
+def generate_html_report(indices, distances):
+    """Generate an HTML report of the nearest neighbors."""
+    # Create a DataFrame for the results
+    results_df = pd.DataFrame({
+        'Index': indices[0],
+        'Distance': distances[0]
+    })
+
+    # Save the DataFrame to an HTML file
+    results_df.to_html('output.html', index=False)
+
 # Main script
 if __name__ == "__main__":
     # Load data
@@ -90,14 +102,20 @@ if __name__ == "__main__":
     
     # Example: Match a new resident
     new_resident_features = [30, 50000, 'Teacher', 'Downtown']  # Example new resident features
-    indices = match_residents(model, scaler, occupation_encoder, community_encoder, new_resident_features)
+    distances, indices = match_residents(model, scaler, occupation_encoder, community_encoder, new_resident_features)
+    
+    # Generate HTML report
+    generate_html_report(indices, distances)
     
     print(f'Matching residents indices: {indices}')
+    print(f'Matching residents distances: {distances}')
     
     # Load the model (example usage)
     loaded_model, loaded_scaler, loaded_occupation_encoder, loaded_community_encoder = load_model()
     
     # Match a new resident using the loaded model
-    indices_loaded_model = match_residents(loaded_model, loaded_scaler, loaded_occupation_encoder, loaded_community_encoder, new_resident_features)
+    distances_loaded_model, indices_loaded_model = match_residents(
+        loaded_model, loaded_scaler, loaded_occupation_encoder, loaded_community_encoder, new_resident_features)
     
     print(f'Matching residents indices (Loaded Model): {indices_loaded_model}')
+    print(f'Matching residents distances (Loaded Model): {distances_loaded_model}')
