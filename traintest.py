@@ -76,15 +76,95 @@ def load_model():
 
 # Generate HTML report
 def generate_html_report(indices, distances):
-    """Generate an HTML report of the nearest neighbors."""
+    """Generate a styled HTML report of the nearest neighbors."""
     # Create a DataFrame for the results
     results_df = pd.DataFrame({
         'Index': indices[0],
         'Distance': distances[0]
     })
 
-    # Save the DataFrame to an HTML file
-    results_df.to_html('output.html', index=False)
+    # Define HTML and CSS for styling
+    html = """
+    <html>
+    <head>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                color: #333;
+                background-color: #f4f4f4;
+            }
+            h1 {
+                color: #4CAF50;
+                text-align: center;
+                margin-bottom: 20px;
+            }
+            table {
+                width: 80%;
+                margin: 0 auto;
+                border-collapse: collapse;
+                background-color: #fff;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
+            th, td {
+                border: 1px solid #ddd;
+                padding: 12px;
+                text-align: center;
+            }
+            th {
+                background-color: #4CAF50;
+                color: white;
+                font-weight: bold;
+            }
+            tr:nth-child(even) {
+                background-color: #f2f2f2;
+            }
+            tr:hover {
+                background-color: #ddd;
+            }
+            caption {
+                font-size: 1.5em;
+                margin: 10px;
+                font-weight: bold;
+                color: #4CAF50;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Nearest Neighbors Report</h1>
+        <table>
+            <caption>Matching Residents</caption>
+            <thead>
+                <tr>
+                    <th>Index</th>
+                    <th>Distance</th>
+                </tr>
+            </thead>
+            <tbody>
+    """
+
+    # Add rows for each result
+    for idx, dist in zip(indices[0], distances[0]):
+        html += f"""
+            <tr>
+                <td>{idx}</td>
+                <td>{dist:.2f}</td>
+            </tr>
+        """
+    
+    # Close HTML tags
+    html += """
+            </tbody>
+        </table>
+    </body>
+    </html>
+    """
+    
+    # Write the HTML to a file
+    with open('output.html', 'w') as file:
+        file.write(html)
 
 # Main script
 if __name__ == "__main__":
