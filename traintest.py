@@ -75,65 +75,22 @@ def load_model():
     return model, scaler, occupation_encoder, community_encoder
 
 def generate_html_report(indices, distances):
-    """Generate a styled HTML report of the nearest neighbors."""
+    """Generate a basic HTML report of the nearest neighbors."""
     # Create a DataFrame for the results
     results_df = pd.DataFrame({
         'Index': indices[0],
         'Distance': distances[0]
     })
 
-    # Define HTML and CSS for styling
+    # Define HTML for a basic table
     html = """
     <html>
     <head>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                margin: 20px;
-                color: #333;
-                background-color: #f4f4f4;
-            }
-            h1 {
-                color: #4CAF50;
-                text-align: center;
-                margin-bottom: 20px;
-            }
-            table {
-                width: 80%;
-                margin: 0 auto;
-                border-collapse: collapse;
-                background-color: #fff;
-                border-radius: 8px;
-                overflow: hidden;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            }
-            th, td {
-                border: 1px solid #ddd;
-                padding: 12px;
-                text-align: center;
-            }
-            th {
-                background-color: #4CAF50;
-                color: white;
-                font-weight: bold;
-            }
-            tr:nth-child(even) {
-                background-color: #f2f2f2;
-            }
-            tr:hover {
-                background-color: #ddd;
-            }
-            caption {
-                font-size: 1.5em;
-                margin: 10px;
-                font-weight: bold;
-                color: #4CAF50;
-            }
-        </style>
+        <title>Nearest Neighbors Report</title>
     </head>
     <body>
         <h1>Nearest Neighbors Report</h1>
-        <table>
+        <table border="1" cellpadding="5" cellspacing="0" style="width: 80%; margin: auto;">
             <caption>Matching Residents</caption>
             <thead>
                 <tr>
@@ -164,7 +121,6 @@ def generate_html_report(indices, distances):
     # Write the HTML to a file
     with open('output.html', 'w') as file:
         file.write(html)
-
 # Main script
 if __name__ == "__main__":
     # Load data
