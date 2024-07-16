@@ -74,7 +74,6 @@ def load_model():
         community_encoder = pickle.load(f)
     return model, scaler, occupation_encoder, community_encoder
 
-# Generate HTML report
 def generate_html_report(indices, distances):
     """Generate a styled HTML report of the nearest neighbors."""
     # Create a DataFrame for the results
