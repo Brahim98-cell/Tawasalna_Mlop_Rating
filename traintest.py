@@ -1,124 +1,103 @@
 import pandas as pd
-from surprise import Dataset, Reader, SVD, accuracy
-from surprise.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.neighbors import NearestNeighbors
 import pickle
-import chardet
-
-# Detect file encoding
-def detect_encoding(file_path):
-    with open(file_path, 'rb') as file:
-        result = chardet.detect(file.read())
-    return result['encoding']
 
 # Load data
-def load_data(file_path):
-    """Load product rating data from CSV with handling for encoding and errors."""
-    encoding = detect_encoding(file_path)
-    try:
-        return pd.read_csv(file_path, encoding=encoding, on_bad_lines='skip')
-    except Exception as e:
-        print(f"Error loading file: {e}")
-        raise
+def load_data():
+    """Load resident data from CSV."""
+    return pd.read_csv('resident_data.csv')
 
-# Prepare data for Surprise
+# Prepare data
 def prepare_data(df):
-    """Prepare data for collaborative filtering using Surprise."""
-    reader = Reader(rating_scale=(1, 5))  # Adjust the rating scale if necessary
-    data = Dataset.load_from_df(df[['user_id', 'product_id', 'rating']], reader)
-    return data
+    """Prepare data by selecting features, encoding categorical variables, and scaling."""
+    # Encode categorical features
+    label_encoder_occupation = LabelEncoder()
+    label_encoder_community = LabelEncoder()
+    
+    df['occupation_encoded'] = label_encoder_occupation.fit_transform(df['occupation'])
+    df['community_encoded'] = label_encoder_community.fit_transform(df['community'])
+    
+    # Select features
+    features = df[['age', 'income', 'occupation_encoded', 'community_encoded']]
+    
+    return features, label_encoder_occupation, label_encoder_community
 
-# Build and train model
-def build_and_train_model(data):
-    """Train a collaborative filtering model using SVD."""
-    trainset, testset = train_test_split(data, test_size=0.2, random_state=42)
-    model = SVD()  # Singular Value Decomposition
-    model.fit(trainset)
-    predictions = model.test(testset)
-    rmse = accuracy.rmse(predictions)
-    return model, rmse
+# Train and match model
+def train_and_match_model(features):
+    """Train a K-Nearest Neighbors model and perform matching."""
+    scaler = StandardScaler()
+    scaled_features = scaler.fit_transform(features)
+    
+    model = NearestNeighbors(n_neighbors=5, algorithm='auto')
+    model.fit(scaled_features)
+    
+    return model, scaler
 
-# Recommend products for a specific user
-def recommend_products(model, user_id, all_product_ids, top_n=10):
-    """Recommend top N products for a user based on model predictions."""
-    predictions = []
-    for product_id in all_product_ids:
-        pred = model.predict(user_id, product_id)
-        predictions.append((product_id, pred.est))
-    predictions.sort(key=lambda x: x[1], reverse=True)
-    return predictions[:top_n]
+# Match residents
+def match_residents(model, scaler, occupation_encoder, community_encoder, new_resident_features):
+    """Match a new resident with existing residents."""
+    # Convert categorical features to numeric
+    new_resident_features_encoded = new_resident_features.copy()
+    new_resident_features_encoded[2] = occupation_encoder.transform([new_resident_features[2]])[0]
+    new_resident_features_encoded[3] = community_encoder.transform([new_resident_features[3]])[0]
+    
+    # Scale features
+    scaled_new_resident = scaler.transform([new_resident_features_encoded])
+    
+    # Find nearest neighbors
+    distances, indices = model.kneighbors(scaled_new_resident)
+    return indices
 
-# Save model to a file
-def save_model(model, file_path):
-    """Save the trained model to a file."""
-    with open(file_path, 'wb') as f:
+# Save model
+def save_model(model, scaler, occupation_encoder, community_encoder):
+    """Save the trained model, scaler, and encoders."""
+    with open('knn_model.pkl', 'wb') as f:
         pickle.dump(model, f)
+    with open('scaler.pkl', 'wb') as f:
+        pickle.dump(scaler, f)
+    with open('occupation_encoder.pkl', 'wb') as f:
+        pickle.dump(occupation_encoder, f)
+    with open('community_encoder.pkl', 'wb') as f:
+        pickle.dump(community_encoder, f)
 
-# Load model from a file
-def load_model(file_path):
-    """Load the trained model from a file."""
-    with open(file_path, 'rb') as f:
-        return pickle.load(f)
-
-# Convert recommendations to HTML
-def recommendations_to_html(recommendations, file_path):
-    """Convert the recommendations to an HTML file."""
-    df = pd.DataFrame(recommendations, columns=['Product ID', 'Predicted Rating'])
-    html_content = df.to_html(index=False)
-    with open(file_path, 'w') as f:
-        f.write(html_content)
-
-# Generate HTML report
-def generate_html_report(rmse, recommendations, file_path):
-    """Generate an HTML report for the model evaluation."""
-    with open(file_path, 'w') as f:
-        f.write('<html><body>')
-        f.write('<h1>Recommendation Model Evaluation Report</h1>')
-        f.write('<p>RMSE of the SVD model is: {:.2f}</p>'.format(rmse))
-        f.write('<h2>Top Recommendations</h2>')
-        
-        # Convert recommendations to HTML and include in the report
-        recommendations_df = pd.DataFrame(recommendations, columns=['Product ID', 'Predicted Rating'])
-        recommendations_html = recommendations_df.to_html(index=False)
-        f.write(recommendations_html)
-        
-        f.write('</body></html>')
+# Load model
+def load_model():
+    """Load the trained model, scaler, and encoders."""
+    with open('knn_model.pkl', 'rb') as f:
+        model = pickle.load(f)
+    with open('scaler.pkl', 'rb') as f:
+        scaler = pickle.load(f)
+    with open('occupation_encoder.pkl', 'rb') as f:
+        occupation_encoder = pickle.load(f)
+    with open('community_encoder.pkl', 'rb') as f:
+        community_encoder = pickle.load(f)
+    return model, scaler, occupation_encoder, community_encoder
 
 # Main script
 if __name__ == "__main__":
-    # Specify the path to your CSV file
-    file_path = 'product_ratings.csv'  # Update this path if needed
-    
     # Load data
-    df = load_data(file_path)
+    df = load_data()
     
-    # Prepare data for the recommendation model
-    data = prepare_data(df)
+    # Prepare data
+    features, occupation_encoder, community_encoder = prepare_data(df)
     
-    # Build and train the model
-    model, rmse = build_and_train_model(data)
+    # Train and match model
+    model, scaler = train_and_match_model(features)
     
-    # Save the trained model
-    save_model(model, 'product_recommendation_model.pkl')
+    # Save the model, scaler, and encoders
+    save_model(model, scaler, occupation_encoder, community_encoder)
     
-    # Example: Recommend products for a specific user
-    user_id = 1  # Example user ID; change as needed
-    all_product_ids = df['product_id'].unique()
-    recommendations = recommend_products(model, user_id, all_product_ids)
+    # Example: Match a new resident
+    new_resident_features = [30, 50000, 'Teacher', 'Downtown']  # Example new resident features
+    indices = match_residents(model, scaler, occupation_encoder, community_encoder, new_resident_features)
     
-    # Convert and save recommendations to HTML
-    recommendations_to_html(recommendations, 'recommendations.html')
-    
-    # Generate HTML report
-    generate_html_report(rmse, recommendations, 'model_evaluation_report.html')
+    print(f'Matching residents indices: {indices}')
     
     # Load the model (example usage)
-    loaded_model = load_model('product_recommendation_model.pkl')
+    loaded_model, loaded_scaler, loaded_occupation_encoder, loaded_community_encoder = load_model()
     
-    # Recommend products using the loaded model
-    recommendations_loaded_model = recommend_products(loaded_model, user_id, all_product_ids)
+    # Match a new resident using the loaded model
+    indices_loaded_model = match_residents(loaded_model, loaded_scaler, loaded_occupation_encoder, loaded_community_encoder, new_resident_features)
     
-    # Convert and save recommendations from the loaded model to HTML
-    recommendations_to_html(recommendations_loaded_model, 'recommendations_loaded.html')
-    
-    # Generate HTML report for loaded model
-    generate_html_report(rmse, recommendations_loaded_model, 'model_evaluation_report_loaded.html')
+    print(f'Matching residents indices (Loaded Model): {indices_loaded_model}')
