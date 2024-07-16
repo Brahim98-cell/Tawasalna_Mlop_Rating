@@ -88,7 +88,7 @@ pipeline{
                              reportDir: '.',
                              reportFiles: 'output.html',
                              reportName: 'HTML Report',
-                             reportTitles: 'Product Rating Tawasalna'])
+                             reportTitles: 'Resident Matching Tawasalna'])
             }
         }
     }
