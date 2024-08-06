@@ -1,124 +1,91 @@
 import pandas as pd
-from surprise import Dataset, Reader, SVD, accuracy
-from surprise.model_selection import train_test_split
-import pickle
-import chardet
-
-# Detect file encoding
-def detect_encoding(file_path):
-    with open(file_path, 'rb') as file:
-        result = chardet.detect(file.read())
-    return result['encoding']
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.preprocessing import StandardScaler
+from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline
+import joblib
 
 # Load data
-def load_data(file_path):
-    """Load product rating data from CSV with handling for encoding and errors."""
-    encoding = detect_encoding(file_path)
-    try:
-        return pd.read_csv(file_path, encoding=encoding, on_bad_lines='skip')
-    except Exception as e:
-        print(f"Error loading file: {e}")
-        raise
+data = pd.read_csv('transactions.csv')
 
-# Prepare data for Surprise
-def prepare_data(df):
-    """Prepare data for collaborative filtering using Surprise."""
-    reader = Reader(rating_scale=(1, 5))  # Adjust the rating scale if necessary
-    data = Dataset.load_from_df(df[['user_id', 'product_id', 'rating']], reader)
-    return data
+# Print column names to verify
+print("Columns in dataset:", data.columns)
 
-# Build and train model
-def build_and_train_model(data):
-    """Train a collaborative filtering model using SVD."""
-    trainset, testset = train_test_split(data, test_size=0.2, random_state=42)
-    model = SVD()  # Singular Value Decomposition
-    model.fit(trainset)
-    predictions = model.test(testset)
-    rmse = accuracy.rmse(predictions)
-    return model, rmse
+# Convert transaction_time to relevant features
+data['transaction_hour'] = pd.to_datetime(data['transaction_time'], format='%H:%M:%S').dt.hour
+data.drop('transaction_time', axis=1, inplace=True)
 
-# Recommend products for a specific user
-def recommend_products(model, user_id, all_product_ids, top_n=10):
-    """Recommend top N products for a user based on model predictions."""
-    predictions = []
-    for product_id in all_product_ids:
-        pred = model.predict(user_id, product_id)
-        predictions.append((product_id, pred.est))
-    predictions.sort(key=lambda x: x[1], reverse=True)
-    return predictions[:top_n]
+# Ensure the correct target column name
+target_column = 'is_fraud'  # Update this with the actual target column name
 
-# Save model to a file
-def save_model(model, file_path):
-    """Save the trained model to a file."""
-    with open(file_path, 'wb') as f:
-        pickle.dump(model, f)
+# Separate features and target
+X = data.drop(target_column, axis=1)  # Features
+y = data[target_column]  # Target
 
-# Load model from a file
-def load_model(file_path):
-    """Load the trained model from a file."""
-    with open(file_path, 'rb') as f:
-        return pickle.load(f)
+# Encode categorical variables
+X = pd.get_dummies(X, drop_first=True)  # Convert categorical features to dummy variables
 
-# Convert recommendations to HTML
-def recommendations_to_html(recommendations, file_path):
-    """Convert the recommendations to an HTML file."""
-    df = pd.DataFrame(recommendations, columns=['Product ID', 'Predicted Rating'])
-    html_content = df.to_html(index=False)
-    with open(file_path, 'w') as f:
-        f.write(html_content)
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Generate HTML report
-def generate_html_report(rmse, recommendations, file_path):
-    """Generate an HTML report for the model evaluation."""
-    with open(file_path, 'w') as f:
-        f.write('<html><body>')
-        f.write('<h1>Recommendation Model Evaluation Report</h1>')
-        f.write('<p>RMSE of the SVD model is: {:.2f}</p>'.format(rmse))
-        f.write('<h2>Top Recommendations</h2>')
-        
-        # Convert recommendations to HTML and include in the report
-        recommendations_df = pd.DataFrame(recommendations, columns=['Product ID', 'Predicted Rating'])
-        recommendations_html = recommendations_df.to_html(index=False)
-        f.write(recommendations_html)
-        
-        f.write('</body></html>')
+# Feature scaling
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
-# Main script
-if __name__ == "__main__":
-    # Specify the path to your CSV file
-    file_path = 'product_ratings.csv'  # Update this path if needed
-    
-    # Load data
-    df = load_data(file_path)
-    
-    # Prepare data for the recommendation model
-    data = prepare_data(df)
-    
-    # Build and train the model
-    model, rmse = build_and_train_model(data)
-    
-    # Save the trained model
-    save_model(model, 'product_recommendation_model.pkl')
-    
-    # Example: Recommend products for a specific user
-    user_id = 1  # Example user ID; change as needed
-    all_product_ids = df['product_id'].unique()
-    recommendations = recommend_products(model, user_id, all_product_ids)
-    
-    # Convert and save recommendations to HTML
-    recommendations_to_html(recommendations, 'recommendations.html')
-    
-    # Generate HTML report
-    generate_html_report(rmse, recommendations, 'model_evaluation_report.html')
-    
-    # Load the model (example usage)
-    loaded_model = load_model('product_recommendation_model.pkl')
-    
-    # Recommend products using the loaded model
-    recommendations_loaded_model = recommend_products(loaded_model, user_id, all_product_ids)
-    
-    # Convert and save recommendations from the loaded model to HTML
-    recommendations_to_html(recommendations_loaded_model, 'recommendations_loaded.html')
-    
-    # Generate HTML report for loaded model
-    generate_html_report(rmse, recommendations_loaded_model, 'model_evaluation_report_loaded.html')
+# Initialize SMOTE and Random Forest classifier
+# Ensure k_neighbors <= number of samples in training set
+smote = SMOTE(random_state=42, k_neighbors=min(2, len(X_train) - 1))  # Adjust k_neighbors
+classifier = RandomForestClassifier(n_estimators=100, random_state=42)
+
+# Create a pipeline with SMOTE and Random Forest
+pipeline = Pipeline([
+    ('smote', smote),
+    ('classifier', classifier)
+])
+
+# Train the model
+pipeline.fit(X_train, y_train)
+
+# Make predictions
+y_pred = pipeline.predict(X_test)
+
+# Evaluate the model
+print("Confusion Matrix:")
+print(confusion_matrix(y_test, y_pred))
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred))
+
+# Save the trained model and scaler to files
+joblib.dump(pipeline, 'fraud_detection_pipeline.pkl')
+joblib.dump(scaler, 'scaler.pkl')
+
+# Load the model and scaler
+loaded_pipeline = joblib.load('fraud_detection_pipeline.pkl')
+loaded_scaler = joblib.load('scaler.pkl')
+
+# Prepare new data for prediction
+new_data = pd.DataFrame({
+    'amount': [500.00],  # Extremely high value
+    'transaction_type': ['online'],  # Example categorical feature
+    'merchant_id': [1234],  # Use a different ID
+    'account_age_days': [60],  # Very new account
+    'transaction_hour': [23]  # Example feature (converted transaction time)
+})
+
+# Encode categorical variables in new data
+new_data = pd.get_dummies(new_data, drop_first=True)
+
+# Align new data with model features
+new_data = new_data.reindex(columns=X.columns, fill_value=0)
+
+# Scale new data
+new_data = loaded_scaler.transform(new_data)
+
+# Make predictions
+predictions = loaded_pipeline.predict(new_data)
+print("\nPredictions for new data:")
+print(predictions)
