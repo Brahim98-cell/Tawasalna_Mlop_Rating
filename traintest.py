@@ -1,124 +1,112 @@
 import pandas as pd
-from surprise import Dataset, Reader, SVD, accuracy
-from surprise.model_selection import train_test_split
-import pickle
-import chardet
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics.pairwise import cosine_similarity
+from scipy.sparse import hstack
 
-# Detect file encoding
-def detect_encoding(file_path):
-    with open(file_path, 'rb') as file:
-        result = chardet.detect(file.read())
-    return result['encoding']
-
-# Load data
-def load_data(file_path):
-    """Load product rating data from CSV with handling for encoding and errors."""
-    encoding = detect_encoding(file_path)
-    try:
-        return pd.read_csv(file_path, encoding=encoding, on_bad_lines='skip')
-    except Exception as e:
-        print(f"Error loading file: {e}")
-        raise
-
-# Prepare data for Surprise
-def prepare_data(df):
-    """Prepare data for collaborative filtering using Surprise."""
-    reader = Reader(rating_scale=(1, 5))  # Adjust the rating scale if necessary
-    data = Dataset.load_from_df(df[['user_id', 'product_id', 'rating']], reader)
+# Load the data
+def load_data():
+    data = pd.read_csv('TawasalnaDB.product.csv')
+    data = data.drop(columns=['image', '_class'])
+    data['averageStars'] = data['averageStars'].fillna(data['averageStars'].mean())
     return data
 
-# Build and train model
-def build_and_train_model(data):
-    """Train a collaborative filtering model using SVD."""
-    trainset, testset = train_test_split(data, test_size=0.2, random_state=42)
-    model = SVD()  # Singular Value Decomposition
-    model.fit(trainset)
-    predictions = model.test(testset)
-    rmse = accuracy.rmse(predictions)
-    return model, rmse
+# Prepare features
+def prepare_features(data):
+    tfidf_title = TfidfVectorizer(stop_words='english')
+    tfidf_description = TfidfVectorizer(stop_words='english')
 
-# Recommend products for a specific user
-def recommend_products(model, user_id, all_product_ids, top_n=10):
-    """Recommend top N products for a user based on model predictions."""
-    predictions = []
-    for product_id in all_product_ids:
-        pred = model.predict(user_id, product_id)
-        predictions.append((product_id, pred.est))
-    predictions.sort(key=lambda x: x[1], reverse=True)
-    return predictions[:top_n]
+    title_features = tfidf_title.fit_transform(data['title'])
+    description_features = tfidf_description.fit_transform(data['description'])
 
-# Save model to a file
-def save_model(model, file_path):
-    """Save the trained model to a file."""
-    with open(file_path, 'wb') as f:
-        pickle.dump(model, f)
+    numerical_features = data[['price', 'totalReviews', 'averageStars']]
+    scaler = StandardScaler()
+    scaled_numerical_features = scaler.fit_transform(numerical_features)
 
-# Load model from a file
-def load_model(file_path):
-    """Load the trained model from a file."""
-    with open(file_path, 'rb') as f:
-        return pickle.load(f)
+    encoder = OneHotEncoder(handle_unknown='ignore')
+    categorical_features = encoder.fit_transform(data[['productCategory']]).toarray()
 
-# Convert recommendations to HTML
-def recommendations_to_html(recommendations, file_path):
-    """Convert the recommendations to an HTML file."""
-    df = pd.DataFrame(recommendations, columns=['Product ID', 'Predicted Rating'])
-    html_content = df.to_html(index=False)
-    with open(file_path, 'w') as f:
-        f.write(html_content)
+    combined_features = hstack([title_features, description_features, scaled_numerical_features, categorical_features])
+    
+    return combined_features
 
-# Generate HTML report
-def generate_html_report(rmse, recommendations, file_path):
-    """Generate an HTML report for the model evaluation."""
-    with open(file_path, 'w') as f:
-        f.write('<html><body>')
-        f.write('<h1>Recommendation Model Evaluation Report</h1>')
-        f.write('<p>RMSE of the SVD model is: {:.2f}</p>'.format(rmse))
-        f.write('<h2>Top Recommendations</h2>')
+# Compute similarity matrix
+def compute_similarity(features):
+    return cosine_similarity(features)
+
+# Initialize data and features
+data = load_data()
+features = prepare_features(data)
+similarity_matrix = compute_similarity(features)
+
+# Recommendation function
+def get_similar_products(product_index, top_n=5):
+    similar_scores = list(enumerate(similarity_matrix[product_index]))
+    similar_scores = sorted(similar_scores, key=lambda x: x[1], reverse=True)
+    similar_products = [score[0] for score in similar_scores[1:top_n+1]]
+    return similar_products
+
+# Function to generate HTML file
+def generate_html(products, num_features, num_products):
+    products_html = "".join(f"""
+    <div class="product">
+        <h2>{product['title']}</h2>
+        <p><strong>Description:</strong> {product['description']}</p>
+        <p><strong>Price:</strong> ${product['price']}</p>
+    </div>
+    """ for product in products)
+
+    html_content = f"""
+    <!doctype html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Product Recommendations</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 20px; }}
+            .product {{ border: 1px solid #ddd; padding: 10px; margin: 10px 0; }}
+            .product h2 {{ margin: 0; }}
+            .product p {{ margin: 5px 0; }}
+        </style>
+    </head>
+    <body>
+        <h1>Top Recommended Products</h1>
+        {products_html}
+        <h2>Model Effectiveness</h2>
+        <p>Total number of features used: {num_features}</p>
+        <p>Total number of products in the dataset: {num_products}</p>
+    </body>
+    </html>
+    """
+    
+    with open('recommendation.html', 'w') as file:
+        file.write(html_content)
+
+# Example usage
+product_id = '6654f305cbd64a007f1ac9cf'  # Replace with the product ID you want to test
+
+if product_id in data['_id'].values:
+    product_index = data.index[data['_id'] == product_id].tolist()[0]
+    similar_products_indices = get_similar_products(product_index, top_n=5)
+    
+    if similar_products_indices:
+        recommended_products = data.iloc[similar_products_indices]
+        num_features = features.shape[1]
+        num_products = len(data)
         
-        # Convert recommendations to HTML and include in the report
-        recommendations_df = pd.DataFrame(recommendations, columns=['Product ID', 'Predicted Rating'])
-        recommendations_html = recommendations_df.to_html(index=False)
-        f.write(recommendations_html)
+        # Print to console
+        print("Top Recommended Products:")
+        for _, product in recommended_products.iterrows():
+            print(f"Title: {product['title']}")
+            print(f"Description: {product['description']}")
+            print(f"Price: ${product['price']}")
+            print()
         
-        f.write('</body></html>')
-
-# Main script
-if __name__ == "__main__":
-    # Specify the path to your CSV file
-    file_path = 'product_ratings.csv'  # Update this path if needed
-    
-    # Load data
-    df = load_data(file_path)
-    
-    # Prepare data for the recommendation model
-    data = prepare_data(df)
-    
-    # Build and train the model
-    model, rmse = build_and_train_model(data)
-    
-    # Save the trained model
-    save_model(model, 'product_recommendation_model.pkl')
-    
-    # Example: Recommend products for a specific user
-    user_id = 1  # Example user ID; change as needed
-    all_product_ids = df['product_id'].unique()
-    recommendations = recommend_products(model, user_id, all_product_ids)
-    
-    # Convert and save recommendations to HTML
-    recommendations_to_html(recommendations, 'recommendations.html')
-    
-    # Generate HTML report
-    generate_html_report(rmse, recommendations, 'model_evaluation_report.html')
-    
-    # Load the model (example usage)
-    loaded_model = load_model('product_recommendation_model.pkl')
-    
-    # Recommend products using the loaded model
-    recommendations_loaded_model = recommend_products(loaded_model, user_id, all_product_ids)
-    
-    # Convert and save recommendations from the loaded model to HTML
-    recommendations_to_html(recommendations_loaded_model, 'recommendations_loaded.html')
-    
-    # Generate HTML report for loaded model
-    generate_html_report(rmse, recommendations_loaded_model, 'model_evaluation_report_loaded.html')
+        # Generate HTML file
+        generate_html(recommended_products.to_dict(orient='records'), num_features, num_products)
+        print("HTML file 'recommendation.html' has been generated.")
+    else:
+        print("No recommendations available.")
+else:
+    print("Product ID not found.")
