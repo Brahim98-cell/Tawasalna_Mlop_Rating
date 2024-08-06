@@ -42,7 +42,7 @@ pipeline{
     }
         stage('Git Checkout'){
             steps{
-                git branch: 'main', credentialsId: 'git', url: 'https://github.com/Brahim98-cell/Tawasalna_Mlop_Rating.git'
+                git branch: 'Fraud-detection', credentialsId: 'git', url: 'https://github.com/Brahim98-cell/Tawasalna_Mlop_Rating.git'
 	    }
         }
         
