@@ -1,3 +1,4 @@
+import requests
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import OneHotEncoder
@@ -7,8 +8,25 @@ from scipy.sparse import hstack
 
 # Load the data
 def load_data():
-    data = pd.read_csv('TawasalnaDB.product.csv')
-    data = data.drop(columns=['image', '_class'])
+    url = 'https://business.tawasalna.com/tawasalna-business/products/getProducts/active'
+    response = requests.get(url)
+    response.raise_for_status()  # Ensure we notice bad responses
+    
+    data = pd.json_normalize(response.json())
+    
+    # Print the first few rows and the columns to understand the structure
+    print(data.head())
+    print(data.columns)
+    
+    # Drop columns that do not need to be used
+    columns_to_drop = ['image', 'publisher.id', 'publisher.email', 'publisher.community.id',
+                        'publisher.community.name', 'publisher.community.description', 'publisher.name',
+                        'productCategory.id', 'productCategory.description', 'productCategory.cover', 
+                        'productCategory.isActive', 'productCategory.productsCount']
+    
+    existing_columns_to_drop = [col for col in columns_to_drop if col in data.columns]
+    
+    data = data.drop(columns=existing_columns_to_drop)
     data['averageStars'] = data['averageStars'].fillna(data['averageStars'].mean())
     return data
 
@@ -25,7 +43,7 @@ def prepare_features(data):
     scaled_numerical_features = scaler.fit_transform(numerical_features)
 
     encoder = OneHotEncoder(handle_unknown='ignore')
-    categorical_features = encoder.fit_transform(data[['productCategory']]).toarray()
+    categorical_features = encoder.fit_transform(data[['productCategory.name']]).toarray()
 
     combined_features = hstack([title_features, description_features, scaled_numerical_features, categorical_features])
     
@@ -86,8 +104,8 @@ def generate_html(products, num_features, num_products):
 # Example usage
 product_id = '6654f305cbd64a007f1ac9cf'  # Replace with the product ID you want to test
 
-if product_id in data['_id'].values:
-    product_index = data.index[data['_id'] == product_id].tolist()[0]
+if product_id in data['id'].values:
+    product_index = data.index[data['id'] == product_id].tolist()[0]
     similar_products_indices = get_similar_products(product_index, top_n=5)
     
     if similar_products_indices:
