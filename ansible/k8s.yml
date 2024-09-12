@@ -1,0 +1,58 @@
+- name: Deploy application on Kubernetes
+  hosts: all
+  gather_facts: false
+  become: yes
+  tasks:
+    - name: Create product rating deployment
+      k8s:
+        kubeconfig: "~/.kube/config"
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: product-rating-deployment
+            namespace: tawasalna
+            labels:
+              app: product-rating-deployment
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: product-rating-deployment
+            template:
+              metadata:
+                labels:
+                  app: product-rating-deployment
+              spec:
+                containers:
+                  - name: product-rating-container
+                    image: brahim98/product-rating:v1.0.0-dev
+                    imagePullPolicy: Always
+                    ports:
+                      - containerPort: 8090
+                nodeSelector:
+                  kubernetes.io/hostname: worker1
+
+    - name: Create backend administration service
+      k8s:
+        state: present
+        kubeconfig: "~/.kube/config"
+        verify_ssl: no
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: administration-service
+            namespace: tawasalna
+            labels:
+              app: my-app-administration
+          spec:
+            selector:
+              app: my-app-administration
+            ports:
+              - protocol: TCP
+                port: 8074
+                targetPort: 8090
+                nodePort: 30334
+            type: NodePort
