@@ -1,6 +1,12 @@
 # Use the official Python image from the Docker Hub
 FROM python:3.10-slim
 
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set the working directory in the container
 WORKDIR /app
 
@@ -15,7 +21,6 @@ COPY . .
 
 # Make port 80 available to the world outside this container
 EXPOSE 80
-
 
 # Run the script
 CMD ["python", "traintest.py"]
