@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Make port 80 available to the world outside this container
-EXPOSE 80
+EXPOSE 5004
 
 # Run the script
 CMD ["python", "traintest.py"]
