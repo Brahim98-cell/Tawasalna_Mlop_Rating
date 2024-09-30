@@ -54,5 +54,5 @@
               - protocol: TCP
                 port: 8074
                 targetPort: 5004
-                nodePort: 30334
+                nodePort: 30348
             type: NodePort
