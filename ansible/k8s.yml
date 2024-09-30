@@ -14,16 +14,16 @@
             name: product-rating-deployment
             namespace: tawasalna
             labels:
-              app: product-rating-deployment
+              app: my-app-rating
           spec:
             replicas: 1
             selector:
               matchLabels:
-                app: product-rating-deployment
+                app: my-app-rating
             template:
               metadata:
                 labels:
-                  app: product-rating-deployment
+                  app: my-app-rating
               spec:
                 containers:
                   - name: product-rating-container
@@ -43,16 +43,16 @@
           apiVersion: v1
           kind: Service
           metadata:
-            name: product-rating-deployment
+            name: product-rating-service
             namespace: tawasalna
             labels:
-              app: product-rating-deployment
+              app: my-app-rating
           spec:
             selector:
-              app: product-rating-deployment
+              app: my-app-rating
             ports:
               - protocol: TCP
-                port: 8074
+                port: 8095
                 targetPort: 5004
                 nodePort: 30348
             type: NodePort
