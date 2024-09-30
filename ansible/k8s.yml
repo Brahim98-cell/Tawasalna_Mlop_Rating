@@ -27,7 +27,7 @@
               spec:
                 containers:
                   - name: product-rating-container
-                    image: brahim98/product-rating:v1.0.1-dev
+                    image: brahim98/product-rating:v1.0.2-dev
                     imagePullPolicy: Always
                     ports:
                       - containerPort: 5004
