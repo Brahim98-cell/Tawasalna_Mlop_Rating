@@ -5,6 +5,8 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.sparse import hstack
+from PIL import Image
+import matplotlib.pyplot as plt
 
 # Load the data
 def load_data():
@@ -19,10 +21,13 @@ def load_data():
     print(data.columns)
     
     # Drop columns that do not need to be used
-    columns_to_drop = ['image', 'publisher.id', 'publisher.email', 'publisher.community.id',
-                        'publisher.community.name', 'publisher.community.description', 'publisher.name',
-                        'productCategory.id', 'productCategory.description', 'productCategory.cover', 
-                        'productCategory.isActive', 'productCategory.productsCount']
+    columns_to_drop = [
+        'publisher.id', 'publisher.email', 'publisher.community.id',
+        'publisher.community.name', 'publisher.community.description', 
+        'publisher.name', 'productCategory.id', 'productCategory.description', 
+        'productCategory.cover', 'productCategory.isActive', 
+        'productCategory.productsCount'
+    ]
     
     existing_columns_to_drop = [col for col in columns_to_drop if col in data.columns]
     
@@ -62,16 +67,18 @@ similarity_matrix = compute_similarity(features)
 def get_similar_products(product_index, top_n=5):
     similar_scores = list(enumerate(similarity_matrix[product_index]))
     similar_scores = sorted(similar_scores, key=lambda x: x[1], reverse=True)
-    similar_products = [score[0] for score in similar_scores[1:top_n+1]]
+    similar_products = [score[0] for score in similar_scores[1:top_n + 1]]
     return similar_products
 
 # Function to generate HTML file
 def generate_html(products, num_features, num_products):
+    base_image_url = "https://upload.tawasalna.com/"  # Base URL for images
     products_html = "".join(f"""
     <div class="product">
         <h2>{product['title']}</h2>
         <p><strong>Description:</strong> {product['description']}</p>
         <p><strong>Price:</strong> ${product['price']}</p>
+        <img src="{base_image_url}{product['image']}" alt="{product['title']}" style="width:150px; height:auto;" />
     </div>
     """ for product in products)
 
@@ -101,8 +108,10 @@ def generate_html(products, num_features, num_products):
     with open('recommendation.html', 'w') as file:
         file.write(html_content)
 
+
+
 # Example usage
-product_id = '6654f305cbd64a007f1ac9cf'  # Replace with the product ID you want to test
+product_id = '663d93b81d70010259349716'  # Replace with the product ID you want to test
 
 if product_id in data['id'].values:
     product_index = data.index[data['id'] == product_id].tolist()[0]
@@ -112,7 +121,7 @@ if product_id in data['id'].values:
         recommended_products = data.iloc[similar_products_indices]
         num_features = features.shape[1]
         num_products = len(data)
-        
+
         # Print to console
         print("Top Recommended Products:")
         for _, product in recommended_products.iterrows():
@@ -120,7 +129,7 @@ if product_id in data['id'].values:
             print(f"Description: {product['description']}")
             print(f"Price: ${product['price']}")
             print()
-        
+
         # Generate HTML file
         generate_html(recommended_products.to_dict(orient='records'), num_features, num_products)
         print("HTML file 'recommendation.html' has been generated.")
