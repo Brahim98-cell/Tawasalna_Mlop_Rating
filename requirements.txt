@@ -4,6 +4,6 @@ chardet
 surprise
 scipy
 requests
-PIL
-matplotlib.pyplot
+Pillow
+matplotlib
 
