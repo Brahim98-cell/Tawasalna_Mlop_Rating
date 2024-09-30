@@ -30,7 +30,7 @@
                     image: brahim98/product-rating:v1.0.1-dev
                     imagePullPolicy: Always
                     ports:
-                      - containerPort: 8090
+                      - containerPort: 5004
                 nodeSelector:
                   kubernetes.io/hostname: worker2
 
@@ -53,6 +53,6 @@
             ports:
               - protocol: TCP
                 port: 8074
-                targetPort: 8090
+                targetPort: 5004
                 nodePort: 30334
             type: NodePort
