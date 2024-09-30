@@ -54,11 +54,6 @@ def prepare_features(data):
 def compute_similarity(features):
     return cosine_similarity(features)
 
-# Initialize data and features
-data = load_data()
-features = prepare_features(data)
-similarity_matrix = compute_similarity(features)
-
 # Recommendation function
 def get_similar_products(product_index, top_n=5):
     similar_scores = list(enumerate(similarity_matrix[product_index]))
@@ -101,9 +96,15 @@ HTML_TEMPLATE = """
 </html>
 """
 
+# Initialize data and features
+data = load_data()
+features = prepare_features(data)
+similarity_matrix = compute_similarity(features)
+
 # API endpoint for recommendations
-@app.route('/recommend/<product_id>', methods=['GET'])
-def recommend(product_id):
+@app.route('/recommend', methods=['GET'])
+def recommend():
+    product_id = '663d93b81d70010259349716'  # Hardcoded product ID for comparison
     if product_id in data['id'].values:
         product_index = data.index[data['id'] == product_id].tolist()[0]
         similar_products_indices = get_similar_products(product_index, top_n=5)
@@ -121,4 +122,4 @@ def recommend(product_id):
         return jsonify({"message": "Product ID not found."}), 404
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5004)
+    app.run(host='185.192.96.18', port=5004)
