@@ -34,7 +34,7 @@
                 nodeSelector:
                   kubernetes.io/hostname: worker2
 
-    - name: Create backend administration service
+    - name: Create mlops product rating service
       k8s:
         state: present
         kubeconfig: "~/.kube/config"
@@ -43,13 +43,13 @@
           apiVersion: v1
           kind: Service
           metadata:
-            name: administration-service
+            name: product-rating-deployment
             namespace: tawasalna
             labels:
-              app: my-app-administration
+              app: product-rating-deployment
           spec:
             selector:
-              app: my-app-administration
+              app: product-rating-deployment
             ports:
               - protocol: TCP
                 port: 8074
