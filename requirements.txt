@@ -4,3 +4,6 @@ chardet
 surprise
 scipy
 requests
+PIL
+matplotlib.pyplot
+
