@@ -32,7 +32,7 @@
                     ports:
                       - containerPort: 5004
                 nodeSelector:
-                  kubernetes.io/hostname: worker2
+                  kubernetes.io/hostname: worker1
 
     - name: Create mlops product rating service
       k8s:
