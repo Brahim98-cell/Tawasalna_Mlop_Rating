@@ -59,12 +59,13 @@ pipeline{
                 sh 'python3 traintest.py'
             }
         }*/
+	    /*
          stage('Run Script') {
             steps {
                 // Run the converted Python script and capture the output
                 sh 'python3 traintest.py > output.log'
             }
-        }
+        } */
         
   /*   stage('Archive Results') {
             steps {
