@@ -29,7 +29,7 @@ def preprocess_data(data):
 X, y = preprocess_data(data)
 
 # Dummy data for prediction
-def get_new_data():
+def get_new_data(X):
     new_data = pd.DataFrame({
         'amount': [500.00, 1000000.00, 200.00, 5000.00, 750.00, 1200.00, 300.00, 45000.00, 123.00, 20.00],
         'transaction_type': ['online', 'online', 'online', 'offline', 'online', 'offline', 'online', 'online', 'offline', 'offline'],
@@ -40,7 +40,7 @@ def get_new_data():
 
     # Encode categorical variables and align columns
     X_new = pd.get_dummies(new_data, drop_first=True)
-    X_new = X_new.reindex(columns=pipeline.named_steps['classifier'].feature_importances_.index, fill_value=0)
+    X_new = X_new.reindex(columns=X.columns, fill_value=0)  # Align new data with training data
     X_scaled = scaler.transform(X_new)
 
     return X_scaled, new_data
@@ -48,7 +48,7 @@ def get_new_data():
 @app.route('/')
 def predict_fraud():
     # Get new data and predictions
-    X_new, original_data = get_new_data()
+    X_new, original_data = get_new_data(X)
     predictions = pipeline.predict(X_new)
 
     # Prepare results
