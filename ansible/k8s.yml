@@ -54,5 +54,5 @@
               - protocol: TCP
                 port: 8099
                 targetPort: 5007
-                nodePort: 303501
+                nodePort: 30352
             type: NodePort
