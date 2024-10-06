@@ -1,12 +1,13 @@
-from flask import Flask, render_template_string, request
+from flask import Flask, render_template_string
 import pandas as pd
 import joblib
 
 app = Flask(__name__)
 
-# Load pre-trained model and scaler
+# Load pre-trained model, scaler, and feature columns
 pipeline = joblib.load('fraud_detection_pipeline.pkl')
 scaler = joblib.load('scaler.pkl')
+feature_columns = joblib.load('feature_columns.pkl')
 
 # Load the data from transactions.csv
 def load_transaction_data():
@@ -27,7 +28,7 @@ def fraud_detection():
     new_data = load_transaction_data()
 
     # Align columns with the trained model input
-    new_data = new_data.reindex(columns=X.columns, fill_value=0)
+    new_data = new_data.reindex(columns=feature_columns, fill_value=0)
 
     # Scale the input data
     new_data_scaled = scaler.transform(new_data)
