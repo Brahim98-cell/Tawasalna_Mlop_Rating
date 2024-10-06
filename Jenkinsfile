@@ -8,13 +8,8 @@ pipeline{
     agent any
 
     environment {
-       DOCKERHUB_USERNAME = "brahim98"
-       DEV_TAG = "${DOCKERHUB_USERNAME}/tawasalna-ai:v1.0.0-dev"
-       STAGING_TAG = "${DOCKERHUB_USERNAME}/tawasalna-ai:v1.0.0-staging"
-       PROD_TAG = "${DOCKERHUB_USERNAME}/tawasalna-ai:v1.0.0-prod"
-       JMETER_VERSION = '5.6.3'
-               JMETER_HOME = "/path/to/apache-jmeter-${JMETER_VERSION}"
-               PERFORMANCE_JMX = 'Performance.jmx'
+             DOCKER_IMAGE_transaction = 'brahim98/transaction-prediction:v1.0.0-dev'
+
   }
      parameters {
        string(name: 'BRANCH_NAME', defaultValue: "${scm.branches[0].name}", description: 'Git branch name')
@@ -64,12 +59,13 @@ pipeline{
                 sh 'python3 traintest.py'
             }
         }*/
+	    /*
          stage('Run Script') {
             steps {
                 // Run the converted Python script and capture the output
                 sh 'python3 traintest.py > output.log'
             }
-        }
+        } */
         
   /*   stage('Archive Results') {
             steps {
@@ -78,7 +74,7 @@ pipeline{
             }
         }
 
- */
+ 
         
         stage('Publish HTML Report') {
             steps {
@@ -91,6 +87,60 @@ pipeline{
                              reportTitles: 'Product Rating Tawasalna'])
             }
         }
+*/
+
+ stage('Build image rating') {
+                steps {
+                    script {
+                // Build the Docker image for the Spring Boot apps
+                sh "docker build -t $DOCKER_IMAGE_transaction -f Dockerfile ."
+              
+            }
+                }
+            }
+
+
+      stage('Push image rating') {
+                steps {
+                    script {
+                        withDockerRegistry([credentialsId: 'docker-hub-creds',url: ""]) {
+                            // Push the Docker image to Docker Hub
+
+                        sh "docker push $DOCKER_IMAGE_transaction"
+                   
+                        }
+                    }
+                }}
+
+
+
+
+
+
+
+
+         stage('Deployment stage ') {
+    steps {
+    dir('ansible') {
+
+        sh "sudo ansible-playbook -u root k8s.yml -i inventory/host.yml"
+    }
+
+}
+
+}
+
+
+
+	    
+	    
+	    
+
+
+
+	    
+
+	    
     }
 }
     
