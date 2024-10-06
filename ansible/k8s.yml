@@ -1,0 +1,58 @@
+- name: Deploy application on Kubernetes
+  hosts: all
+  gather_facts: false
+  become: yes
+  tasks:
+    - name: Create fraud detection deployment
+      k8s:
+        kubeconfig: "~/.kube/config"
+        state: present
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: fraud-detection-deployment
+            namespace: tawasalna
+            labels:
+              app: my-app-fraud
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: my-app-fraud
+            template:
+              metadata:
+                labels:
+                  app: my-app-fraud
+              spec:
+                containers:
+                  - name: fraud-detection-container
+                    image: brahim98/transaction-prediction:v1.0.0-dev
+                    imagePullPolicy: Always
+                    ports:
+                      - containerPort: 5007
+                nodeSelector:
+                  kubernetes.io/hostname: worker2
+
+    - name: Create mlops fraud detection service
+      k8s:
+        state: present
+        kubeconfig: "~/.kube/config"
+        verify_ssl: no
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: fraud-detection-service
+            namespace: tawasalna
+            labels:
+              app:  my-app-fraud
+          spec:
+            selector:
+              app:  my-app-fraud
+            ports:
+              - protocol: TCP
+                port: 8099
+                targetPort: 5007
+                nodePort: 303501
+            type: NodePort
