@@ -4,96 +4,75 @@ import joblib
 
 app = Flask(__name__)
 
-# Load pre-trained model, scaler, and feature columns
+# Load the saved model and scaler
 pipeline = joblib.load('fraud_detection_pipeline.pkl')
 scaler = joblib.load('scaler.pkl')
-feature_columns = joblib.load('feature_columns.pkl')
 
-# Load the data from transactions.csv
-def load_transaction_data():
-    data = pd.read_csv('transactions.csv')
+# Load the transaction data
+data = pd.read_csv('transactions.csv')
 
+# Preprocess data
+def preprocess_data(data):
     # Convert transaction_time to relevant features
     data['transaction_hour'] = pd.to_datetime(data['transaction_time'], format='%H:%M:%S').dt.hour
     data.drop('transaction_time', axis=1, inplace=True)
 
-    # Encode categorical variables
-    data = pd.get_dummies(data, drop_first=True)
+    target_column = 'is_fraud'  # Ensure this matches your dataset
+    X = data.drop(target_column, axis=1)
+    y = data[target_column]
 
-    return data
+    # Encode categorical variables
+    X = pd.get_dummies(X, drop_first=True)
+
+    return X, y
+
+X, y = preprocess_data(data)
+
+# Dummy data for prediction
+def get_new_data():
+    new_data = pd.DataFrame({
+        'amount': [500.00, 1000000.00, 200.00, 5000.00, 750.00, 1200.00, 300.00, 45000.00, 123.00, 20.00],
+        'transaction_type': ['online', 'online', 'online', 'offline', 'online', 'offline', 'online', 'online', 'offline', 'offline'],
+        'merchant_id': [1234, 5678, 67890, 13579, 24680, 112233, 445566, 778899, 101112, 131415],
+        'account_age_days': [60, 10, 300, 5, 2, 100, 150, 20, 500, 1],
+        'transaction_hour': [23, 14, 8, 18, 3, 21, 12, 6, 20, 15]
+    })
+
+    # Encode categorical variables and align columns
+    X_new = pd.get_dummies(new_data, drop_first=True)
+    X_new = X_new.reindex(columns=pipeline.named_steps['classifier'].feature_importances_.index, fill_value=0)
+    X_scaled = scaler.transform(X_new)
+
+    return X_scaled, new_data
 
 @app.route('/')
-def fraud_detection():
-    # Load transaction data
-    new_data = load_transaction_data()
+def predict_fraud():
+    # Get new data and predictions
+    X_new, original_data = get_new_data()
+    predictions = pipeline.predict(X_new)
 
-    # Align columns with the trained model input
-    new_data = new_data.reindex(columns=feature_columns, fill_value=0)
+    # Prepare results
+    original_data['prediction'] = ['Fraudulent' if p == 1 else 'Not Fraudulent' for p in predictions]
 
-    # Scale the input data
-    new_data_scaled = scaler.transform(new_data)
+    # Create HTML table
+    results_html = original_data.to_html(classes='table table-striped', index=False)
 
-    # Make predictions
-    predictions = pipeline.predict(new_data_scaled)
-
-    # Append predictions to the DataFrame
-    new_data['prediction'] = ['Fraudulent' if pred == 1 else 'Not Fraudulent' for pred in predictions]
-
-    # Generate HTML content dynamically
-    html_content = '''
+    # Render HTML template
+    html_template = '''
     <html>
     <head>
-        <title>Prediction Results</title>
-        <style>
-            table {
-                width: 100%;
-                border-collapse: collapse;
-            }
-            table, th, td {
-                border: 1px solid black;
-            }
-            th, td {
-                padding: 8px;
-                text-align: left;
-            }
-            th {
-                background-color: #f2f2f2;
-            }
-        </style>
+        <title>Fraud Detection Predictions</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
     </head>
     <body>
-        <h1>Fraud Detection Prediction Results</h1>
-        <table>
-            <tr>
-                <th>Amount</th>
-                <th>Transaction Type</th>
-                <th>Merchant ID</th>
-                <th>Account Age (days)</th>
-                <th>Transaction Hour</th>
-                <th>Prediction</th>
-            </tr>
-    '''
-
-    # Append rows for each prediction
-    for index, row in new_data.iterrows():
-        html_content += f'''
-            <tr>
-                <td>{row.get('amount', 'N/A')}</td>
-                <td>{row.get('transaction_type', 'N/A')}</td>
-                <td>{row.get('merchant_id', 'N/A')}</td>
-                <td>{row.get('account_age_days', 'N/A')}</td>
-                <td>{row.get('transaction_hour', 'N/A')}</td>
-                <td>{row['prediction']}</td>
-            </tr>
-        '''
-    
-    html_content += '''
-        </table>
+        <div class="container">
+            <h1 class="mt-5">Fraud Detection Prediction Results</h1>
+            {{ table | safe }}
+        </div>
     </body>
     </html>
     '''
-
-    return render_template_string(html_content)
+    return render_template_string(html_template, table=results_html)
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5007)
+    app.run(host='0.0.0.0', port=5007)
