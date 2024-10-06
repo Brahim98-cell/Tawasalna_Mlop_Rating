@@ -8,7 +8,7 @@ pipeline{
     agent any
 
     environment {
-             DOCKER_IMAGE_transaction = 'brahim98/transaction-prediction:v1.0.0-dev'
+             DOCKER_IMAGE_transaction = 'brahim98/transaction-prediction:v1.0.1-dev'
 
   }
      parameters {
