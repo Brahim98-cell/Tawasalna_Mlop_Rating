@@ -5,3 +5,4 @@ imbalanced-learn
 joblib 
 chardet 
 surprise 
+Flask
