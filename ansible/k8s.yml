@@ -27,7 +27,7 @@
               spec:
                 containers:
                   - name: fraud-detection-container
-                    image: brahim98/transaction-prediction:v1.0.4-dev
+                    image: brahim98/transaction-prediction:v1.0.5-dev
                     imagePullPolicy: Always
                     ports:
                       - containerPort: 5007
