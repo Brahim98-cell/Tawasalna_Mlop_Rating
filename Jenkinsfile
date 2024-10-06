@@ -89,7 +89,7 @@ pipeline{
         }
 */
 
- stage('Build image rating') {
+ stage('Build image ') {
                 steps {
                     script {
                 // Build the Docker image for the Spring Boot apps
@@ -100,7 +100,7 @@ pipeline{
             }
 
 
-      stage('Push image rating') {
+      stage('Push image ') {
                 steps {
                     script {
                         withDockerRegistry([credentialsId: 'docker-hub-creds',url: ""]) {
